@@ -1,3 +1,5 @@
+<?php
+$resp = <<<XML
 <?xml version="1.0"?>
 
 <RESPONSE_GROUP MISMOVersionID="2.3.1">
@@ -5974,3 +5976,5 @@ NO MATCH FOUND IN CDC'S OFAC DATABASE.
 
 </RESPONSE_GROUP>
 
+
+XML;
