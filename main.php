@@ -84,10 +84,9 @@ curl_setopt($ch, CURLOPT_URL, 'https://credit.meridianlink.com/inetapi/AU/get_cr
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, false);
 
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
 curl_setopt($ch, CURLOPT_VERBOSE, true);
-//curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-//curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 
 //make it a post request
 curl_setopt( $ch, CURLOPT_POST, true );
@@ -134,8 +133,8 @@ $the_table->addAttribute('class', 'table');
 $thead = $the_table->addChild('thead');
 $tr = $thead->addChild('tr');
 $tr->addChild('th', 'Name of Creditor');
-$tr->addChild('th', 'Date');
-//In my opinion, the Outstanding Balance and Monthly Payment options look much nicer with text centered
+//In my opinion, the Last Activity Date, Outstanding Balance and Monthly Payment columns look much nicer with text centered
+$tr->addChild('th', 'Last Activity Date')->addAttribute('class', 'text-center');
 $tr->addChild('th', 'Outstanding Balance')->addAttribute('class', 'text-center');
 $tr->addChild('th', 'Monthly Payment')->addAttribute('class', 'text-center');
 $tr->addChild('th', 'Account Type');
@@ -155,8 +154,8 @@ foreach ($liabilities as $liability) {
     $creditor_name = $liability->xpath('//_CREDITOR')[0]['_Name'];
 
     //now look directly for the values of the attributes of the liability itself for the rest of the information
-    //I'll assume we want _AccountReportedDate
-    $date = $liability['_AccountReportedDate'];
+    //I'll assume we want _LastActivityDate
+    $date = $liability['_LastActivityDate'];
 
     $outstanding_balance = $liability['_UnpaidBalanceAmount'];
 
@@ -167,7 +166,7 @@ foreach ($liabilities as $liability) {
     //the Name of Creditor is a button pretending to be a link
     $row->addChild('td')->addChild('button', $creditor_name)->addAttribute('class','btn btn-link credit-report-button');
     //the others are just text
-    $row->addChild('td', $date);
+    $row->addChild('td', $date)->addAttribute('class', 'text-center');
     $row->addChild('td', $outstanding_balance)->addAttribute('class', 'text-center');
     $row->addChild('td', $monthly_payment)->addAttribute('class', 'text-center');
     $row->addChild('td', $account_type);
