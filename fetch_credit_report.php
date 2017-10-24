@@ -1,5 +1,5 @@
 <?php
-header('Content-Type: text/xml');
+header('Content-Type: text/xml'); //should this be html?
 
 //load the file as a SimpleXMLElement. LIBXML_NOCDATA converts cdata into a string
 $credit_report_SXE = simplexml_load_file('target.xml', null, LIBXML_NOCDATA);
