@@ -1,16 +1,8 @@
 <?php
-//TODO: Create XML request from scratch (using SimpleXML) instead of just including the ready-made one
-
-//require the request file. in it, the xml string is stored to $req_str
-require_once('request.php');
-
-//turn the xml string into a Simple XML Element
-$request_SXE = new SimpleXMLElement($req_str);
-
-
 //get the request xml started
 $request_SXE = new SimpleXMLElement('<?xml version="1.0" encoding="utf-8"?><REQUEST_GROUP MISMOVersionID="2.3.1"></REQUEST_GROUP>');
 
+//party nodes show up a few times with similar format, so I made a function for it
 function make_party(&$sxe_ref, $party_node, $name, $street_address, $city, $state, $postal_code){
     $new_party = $sxe_ref->addChild($party_node);
     $new_party->addAttribute('_Name', $name);
@@ -21,7 +13,6 @@ function make_party(&$sxe_ref, $party_node, $name, $street_address, $city, $stat
 
     //return a reference to $new_party
     return $new_party;
-
 };
 
 //REQUESTING_PARTY
@@ -37,17 +28,20 @@ $sub_party->addAttribute('LoginAccountIdentifier', 'besmartee');
 $sub_party->addAttribute('LoginAccountPassword', '263nx848');
 $sub_party->addAttribute('_Identifier', 'BeSmartee07272015');
 
+//REQUEST
 $req = $request_SXE->addChild('REQUEST');
 $req->addAttribute('RequestDatetime', date('Y-m-d\TH:i:s'));
 $req->addAttribute('InternalAccountIdentifier', '');
 $req->addAttribute('LoginAccountIdentifier', 'TNGUYEN3');
 $req->addAttribute('LoginAccountPassword', 'CHECKm@te1');
 
+//CREDIT_REQUEST, child of REQUEST_DATA
 $credit_request = $req->addChild('REQUEST_DATA')->addChild('CREDIT_REQUEST');
 $credit_request->addChild('MISMOVersionID', '2.3.1');
 $credit_request->addChild('LenderCaseIdentifier', 'LME8BW68');
 $credit_request->addChild('RequestingPartyRequestedByName', 'Benson Pang');
 
+//CREDIT_REQUEST_DATA
 $credit_request_data = $credit_request->addChild('CREDIT_REQUEST_DATA');
 $credit_request_data->addAttribute('CreditRequestID', 'CreditRequest1');
 $credit_request_data->addAttribute('BorrowerID', 'Borrower');
@@ -56,12 +50,13 @@ $credit_request_data->addAttribute('CreditReportType', 'Merge');
 $credit_request_data->addAttribute('CreditRequestType', 'Individual');
 $credit_request_data->addAttribute('CreditRequestDateTime', date('Y-m-d\TH:i:s'));
 
+//CREDIT_REPOSITORY_INCLUDED
 $credit_repository_included = $credit_request_data->addChild('CREDIT_REPOSITORY_INCLUDED');
-
 $credit_repository_included->addAttribute('_EquifaxIndicator', 'Y');
 $credit_repository_included->addAttribute('_ExperianIndicator', 'Y');
 $credit_repository_included->addAttribute('_TransUnionIndicator', 'Y');
 
+//BORROWER, child of LOAD_APPLICATION
 $borrower = $credit_request->addChild('LOAN_APPLICATION')->addChild('BORROWER');
 $borrower->addAttribute('_FirstName', 'Tim');
 $borrower->addAttribute('_LastName', 'Testcase');
@@ -70,6 +65,7 @@ $borrower->addAttribute('_HomeTelephoneNumber', '714-235-7114');
 $borrower->addAttribute('_SSN', '123456789');
 $borrower->addAttribute('_PrintPositionType', 'Borrower');
 
+//_RESIDENCE
 $residence = $borrower->addChild('_RESIDENCE');
 $residence->addAttribute('_StreetAddress', '4053 Aladdin Dr');
 $residence->addAttribute('_City', 'Huntington Beach');
@@ -77,10 +73,6 @@ $residence->addAttribute('_State', 'CA');
 $residence->addAttribute('_PostalCode', '92649');
 $residence->addAttribute('BorrowerResidencyType', 'Current');
 
-
-//exit($request_SXE->asXML());
-
-//TODO: submit request using cURL
 
 //make a curl resource
 $ch = curl_init();
@@ -102,41 +94,40 @@ curl_setopt( $ch, CURLOPT_POST, true );
 
 curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
 
-////turn simplexmlelement into an array?
-//$json = json_encode($req_str);
-//$array = json_decode($json);
-
-
-
 //add in the xml request
 //curl_setopt($ch, CURLOPT_POSTFIELDS, "$req_str");
 curl_setopt($ch, CURLOPT_POSTFIELDS, $request_SXE->asXML());
 
+//in case I need to clean the output buffer
+ob_start(null,null,PHP_OUTPUT_HANDLER_CLEANABLE);
 
 //execute
-//$resp = curl_exec($ch);
+$resp = curl_exec($ch);
 
 curl_close($ch);
 
-//var_dump($resp);
+//turn the response into a SimpleXMLElement
+$resp_SXE = new SimpleXMLElement('<?xml version="1.0"?>'.'<xml>'.$resp.'</xml>');
 
-//pretend to get back a good response (for now)
-include('example_response.php');
+//check if there is an error. if there is, call clean the output buffer and include example_response.php
+$check = $resp_SXE->xpath('//CREDIT_ERROR_MESSAGE[1][not(text())]');
+if(!$check) {
+    ob_clean();
+    include('example_response.php');
+    $resp_SXE = new SimpleXMLElement($resp);
+}
 
-//TODO: save response to file
-//file_put_contents('target.txt', $resp); // should create new file instead of always putting in target.txt
-
-//putting it in xml file instead
+//save response to an xml file. (In the future, I intend to save to a
 file_put_contents('target.xml', $resp);
 
-//TODO: create table of credit liabilities, with these columns: Name of Creditor, Date, Outstanding Balance, Monthly Payment, Account Type
+//create table of credit liabilities, with these columns: Name of Creditor, Date, Outstanding Balance, Monthly Payment, Account Type
 //make an 'empty' SimpleXMLElement
 $output_xml = new SimpleXMLElement('<?xml version="1.0" encoding="utf-8"?><xml></xml>');
 
 //set up the parent table
 $the_table = $output_xml->addChild('table');
 
-//make whole table text-center too?
+//give the table class table for bootstrap's purposes
 $the_table->addAttribute('class', 'table');
 
 
@@ -145,8 +136,9 @@ $thead = $the_table->addChild('thead');
 $tr = $thead->addChild('tr');
 $tr->addChild('th', 'Name of Creditor');
 $tr->addChild('th', 'Date');
-$tr->addChild('th', 'Outstanding Balance');
-$tr->addChild('th', 'Monthly Payment');
+//In my opinion, the Outstanding Balance and Monthly Payment options look much nicer with text centered
+$tr->addChild('th', 'Outstanding Balance')->addAttribute('class', 'text-center');
+$tr->addChild('th', 'Monthly Payment')->addAttribute('class', 'text-center');
 $tr->addChild('th', 'Account Type');
 
 //set up the body of the table
@@ -154,21 +146,16 @@ $table_body = $the_table->addChild('tbody');
 
 //populate the body of the table
 
-//turn the response into a SimpleXMLElement
-$resp_SXE = new SimpleXMLElement($resp);
-
 //select all CREDIT_LIABILITY elements no matter where they are in the document
 $liabilities = $resp_SXE->xpath('//CREDIT_LIABILITY');
-//var_dump($liabilities);
 foreach ($liabilities as $liability) {
-//    $output_xml->addChild('div', 'count');
     //create a new row in the table body
     $row = $table_body->addChild('tr');
 
     //look for any _CREDITOR within this particular liability, and get the value of the _Name attribute from the first one
     $creditor_name = $liability->xpath('//_CREDITOR')[0]['_Name'];
 
-    //now just look at the attributes of the liability itself for the rest of the information
+    //now look directly for the values of the attributes of the liability itself for the rest of the information
     //I'll assume we want _AccountReportedDate
     $date = $liability['_AccountReportedDate'];
 
@@ -180,19 +167,12 @@ foreach ($liabilities as $liability) {
 
     //the Name of Creditor is a button pretending to be a link
     $row->addChild('td')->addChild('button', $creditor_name)->addAttribute('class','btn btn-link credit-report-button');
+    //the others are just text
     $row->addChild('td', $date);
-    //Outstanding Balance and Monthly Payment columns look nicer with their contents centered
     $row->addChild('td', $outstanding_balance)->addAttribute('class', 'text-center');
     $row->addChild('td', $monthly_payment)->addAttribute('class', 'text-center');
     $row->addChild('td', $account_type);
-
-    //put text-center on the entire row
-//    $row->addAttribute('class', 'text-center');
-
 }
 
-
-//TODO: send to front end
-//print($req_xml->asXML());
-//print($resp_SXE->asXML());
+//send to front end as XML
 print($output_xml->asXML());
