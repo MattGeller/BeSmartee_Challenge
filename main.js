@@ -1,15 +1,11 @@
 var credit_report_document_nodes = null;
 
 $(document).ready(function(){
-    console.log('document ready');
-
     $.ajax({
         type: 'GET',
         url: 'main.php',
         dataType: 'xml',
         success: function(resp){
-            console.log('resp',resp);
-            //TODO: add table to dom
             //put the xml tree into a tempdiv
             var tempDiv = $('<div>').append($(resp).find('table'));
 
