@@ -13,7 +13,6 @@ function make_party(&$sxe_ref, $party_node, $name, $street_address, $city, $stat
 
     //return a reference to $new_party
     return $new_party;
-
 };
 
 //REQUESTING_PARTY
@@ -95,12 +94,6 @@ curl_setopt( $ch, CURLOPT_POST, true );
 
 curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
 
-////turn simplexmlelement into an array?
-//$json = json_encode($req_str);
-//$array = json_decode($json);
-
-
-
 //add in the xml request
 //curl_setopt($ch, CURLOPT_POSTFIELDS, "$req_str");
 curl_setopt($ch, CURLOPT_POSTFIELDS, $request_SXE->asXML());
@@ -116,48 +109,25 @@ curl_close($ch);
 //turn the response into a SimpleXMLElement
 $resp_SXE = new SimpleXMLElement('<?xml version="1.0"?>'.'<xml>'.$resp.'</xml>');
 
-
-
-//TODO: check if there is an error. if there is, call ob_clean and include example_response.php
+//check if there is an error. if there is, call clean the output buffer and include example_response.php
 $check = $resp_SXE->xpath('//CREDIT_ERROR_MESSAGE[1][not(text())]');
-if($check) {
-    print(PHP_EOL . 'no errors' . PHP_EOL);
-} else {
-    print(PHP_EOL . 'error found' . PHP_EOL);
+if(!$check) {
+    ob_clean();
+    include('example_response.php');
+    $resp_SXE = new SimpleXMLElement($resp);
 }
 
-
-//$error_text = $resp_SXE->xpath('//CREDIT_ERROR_MESSAGE/_Text')[0];
-
-//$error_text = $resp_SXE->xml->RESPONSE_GROUP->RESPONSE->RESPONSE_DATA->CREDIT_RESPONSE->CREDIT_ERROR_MESSAGE->_TEXT;
-
-//print(PHP_EOL.$error_text.PHP_EOL);
-
-//if($resp_SXE->xpath('boolean(//CREDIT_ERROR_MESSAGE/text())[1]')){
-//    print('found an error message');
-//} else{
-//    print('didnt find error');
-//}
-print('hi im here');
-ob_clean();
-
-//pretend to get back a good response (for now)
-include('example_response.php');
-
-//TODO: save response to file
-//file_put_contents('target.txt', $resp); // should create new file instead of always putting in target.txt
-
-//putting it in xml file instead
+//save response to an xml file. (In the future, I intend to save to a
 file_put_contents('target.xml', $resp);
 
-//TODO: create table of credit liabilities, with these columns: Name of Creditor, Date, Outstanding Balance, Monthly Payment, Account Type
+//create table of credit liabilities, with these columns: Name of Creditor, Date, Outstanding Balance, Monthly Payment, Account Type
 //make an 'empty' SimpleXMLElement
 $output_xml = new SimpleXMLElement('<?xml version="1.0" encoding="utf-8"?><xml></xml>');
 
 //set up the parent table
 $the_table = $output_xml->addChild('table');
 
-//make whole table text-center too?
+//give the table class table for bootstrap's purposes
 $the_table->addAttribute('class', 'table');
 
 
@@ -166,8 +136,9 @@ $thead = $the_table->addChild('thead');
 $tr = $thead->addChild('tr');
 $tr->addChild('th', 'Name of Creditor');
 $tr->addChild('th', 'Date');
-$tr->addChild('th', 'Outstanding Balance');
-$tr->addChild('th', 'Monthly Payment');
+//In my opinion, the Outstanding Balance and Monthly Payment options look much nicer with text centered
+$tr->addChild('th', 'Outstanding Balance')->addAttribute('class', 'text-center');
+$tr->addChild('th', 'Monthly Payment')->addAttribute('class', 'text-center');
 $tr->addChild('th', 'Account Type');
 
 //set up the body of the table
@@ -177,16 +148,14 @@ $table_body = $the_table->addChild('tbody');
 
 //select all CREDIT_LIABILITY elements no matter where they are in the document
 $liabilities = $resp_SXE->xpath('//CREDIT_LIABILITY');
-//var_dump($liabilities);
 foreach ($liabilities as $liability) {
-//    $output_xml->addChild('div', 'count');
     //create a new row in the table body
     $row = $table_body->addChild('tr');
 
     //look for any _CREDITOR within this particular liability, and get the value of the _Name attribute from the first one
     $creditor_name = $liability->xpath('//_CREDITOR')[0]['_Name'];
 
-    //now just look at the attributes of the liability itself for the rest of the information
+    //now look directly for the values of the attributes of the liability itself for the rest of the information
     //I'll assume we want _AccountReportedDate
     $date = $liability['_AccountReportedDate'];
 
@@ -198,19 +167,12 @@ foreach ($liabilities as $liability) {
 
     //the Name of Creditor is a button pretending to be a link
     $row->addChild('td')->addChild('button', $creditor_name)->addAttribute('class','btn btn-link credit-report-button');
+    //the others are just text
     $row->addChild('td', $date);
-    //Outstanding Balance and Monthly Payment columns look nicer with their contents centered
     $row->addChild('td', $outstanding_balance)->addAttribute('class', 'text-center');
     $row->addChild('td', $monthly_payment)->addAttribute('class', 'text-center');
     $row->addChild('td', $account_type);
-
-    //put text-center on the entire row
-//    $row->addAttribute('class', 'text-center');
-
 }
 
-
-//TODO: send to front end
-//print($req_xml->asXML());
-//print($resp_SXE->asXML());
+//send to front end as XML
 print($output_xml->asXML());
