@@ -95,7 +95,6 @@ curl_setopt( $ch, CURLOPT_POST, true );
 curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
 
 //add in the xml request
-//curl_setopt($ch, CURLOPT_POSTFIELDS, "$req_str");
 curl_setopt($ch, CURLOPT_POSTFIELDS, $request_SXE->asXML());
 
 //in case I need to clean the output buffer
