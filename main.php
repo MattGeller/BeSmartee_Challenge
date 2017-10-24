@@ -1,16 +1,8 @@
 <?php
-//TODO: Create XML request from scratch (using SimpleXML) instead of just including the ready-made one
-
-//require the request file. in it, the xml string is stored to $req_str
-require_once('request.php');
-
-//turn the xml string into a Simple XML Element
-$request_SXE = new SimpleXMLElement($req_str);
-
-
 //get the request xml started
 $request_SXE = new SimpleXMLElement('<?xml version="1.0" encoding="utf-8"?><REQUEST_GROUP MISMOVersionID="2.3.1"></REQUEST_GROUP>');
 
+//party nodes show up a few times with similar format, so I made a function for it
 function make_party(&$sxe_ref, $party_node, $name, $street_address, $city, $state, $postal_code){
     $new_party = $sxe_ref->addChild($party_node);
     $new_party->addAttribute('_Name', $name);
@@ -37,17 +29,20 @@ $sub_party->addAttribute('LoginAccountIdentifier', 'besmartee');
 $sub_party->addAttribute('LoginAccountPassword', '263nx848');
 $sub_party->addAttribute('_Identifier', 'BeSmartee07272015');
 
+//REQUEST
 $req = $request_SXE->addChild('REQUEST');
 $req->addAttribute('RequestDatetime', date('Y-m-d\TH:i:s'));
 $req->addAttribute('InternalAccountIdentifier', '');
 $req->addAttribute('LoginAccountIdentifier', 'TNGUYEN3');
 $req->addAttribute('LoginAccountPassword', 'CHECKm@te1');
 
+//CREDIT_REQUEST, child of REQUEST_DATA
 $credit_request = $req->addChild('REQUEST_DATA')->addChild('CREDIT_REQUEST');
 $credit_request->addChild('MISMOVersionID', '2.3.1');
 $credit_request->addChild('LenderCaseIdentifier', 'LME8BW68');
 $credit_request->addChild('RequestingPartyRequestedByName', 'Benson Pang');
 
+//CREDIT_REQUEST_DATA
 $credit_request_data = $credit_request->addChild('CREDIT_REQUEST_DATA');
 $credit_request_data->addAttribute('CreditRequestID', 'CreditRequest1');
 $credit_request_data->addAttribute('BorrowerID', 'Borrower');
@@ -56,12 +51,13 @@ $credit_request_data->addAttribute('CreditReportType', 'Merge');
 $credit_request_data->addAttribute('CreditRequestType', 'Individual');
 $credit_request_data->addAttribute('CreditRequestDateTime', date('Y-m-d\TH:i:s'));
 
+//CREDIT_REPOSITORY_INCLUDED
 $credit_repository_included = $credit_request_data->addChild('CREDIT_REPOSITORY_INCLUDED');
-
 $credit_repository_included->addAttribute('_EquifaxIndicator', 'Y');
 $credit_repository_included->addAttribute('_ExperianIndicator', 'Y');
 $credit_repository_included->addAttribute('_TransUnionIndicator', 'Y');
 
+//BORROWER, child of LOAD_APPLICATION
 $borrower = $credit_request->addChild('LOAN_APPLICATION')->addChild('BORROWER');
 $borrower->addAttribute('_FirstName', 'Tim');
 $borrower->addAttribute('_LastName', 'Testcase');
@@ -70,6 +66,7 @@ $borrower->addAttribute('_HomeTelephoneNumber', '714-235-7114');
 $borrower->addAttribute('_SSN', '123456789');
 $borrower->addAttribute('_PrintPositionType', 'Borrower');
 
+//_RESIDENCE
 $residence = $borrower->addChild('_RESIDENCE');
 $residence->addAttribute('_StreetAddress', '4053 Aladdin Dr');
 $residence->addAttribute('_City', 'Huntington Beach');
@@ -77,10 +74,6 @@ $residence->addAttribute('_State', 'CA');
 $residence->addAttribute('_PostalCode', '92649');
 $residence->addAttribute('BorrowerResidencyType', 'Current');
 
-
-//exit($request_SXE->asXML());
-
-//TODO: submit request using cURL
 
 //make a curl resource
 $ch = curl_init();
@@ -112,13 +105,41 @@ curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-Type: text/xml'));
 //curl_setopt($ch, CURLOPT_POSTFIELDS, "$req_str");
 curl_setopt($ch, CURLOPT_POSTFIELDS, $request_SXE->asXML());
 
+//in case I need to clean the output buffer
+ob_start(null,null,PHP_OUTPUT_HANDLER_CLEANABLE);
 
 //execute
-//$resp = curl_exec($ch);
+$resp = curl_exec($ch);
 
 curl_close($ch);
 
-//var_dump($resp);
+//turn the response into a SimpleXMLElement
+$resp_SXE = new SimpleXMLElement('<?xml version="1.0"?>'.'<xml>'.$resp.'</xml>');
+
+
+
+//TODO: check if there is an error. if there is, call ob_clean and include example_response.php
+$check = $resp_SXE->xpath('//CREDIT_ERROR_MESSAGE[1][not(text())]');
+if($check) {
+    print(PHP_EOL . 'no errors' . PHP_EOL);
+} else {
+    print(PHP_EOL . 'error found' . PHP_EOL);
+}
+
+
+//$error_text = $resp_SXE->xpath('//CREDIT_ERROR_MESSAGE/_Text')[0];
+
+//$error_text = $resp_SXE->xml->RESPONSE_GROUP->RESPONSE->RESPONSE_DATA->CREDIT_RESPONSE->CREDIT_ERROR_MESSAGE->_TEXT;
+
+//print(PHP_EOL.$error_text.PHP_EOL);
+
+//if($resp_SXE->xpath('boolean(//CREDIT_ERROR_MESSAGE/text())[1]')){
+//    print('found an error message');
+//} else{
+//    print('didnt find error');
+//}
+print('hi im here');
+ob_clean();
 
 //pretend to get back a good response (for now)
 include('example_response.php');
@@ -153,9 +174,6 @@ $tr->addChild('th', 'Account Type');
 $table_body = $the_table->addChild('tbody');
 
 //populate the body of the table
-
-//turn the response into a SimpleXMLElement
-$resp_SXE = new SimpleXMLElement($resp);
 
 //select all CREDIT_LIABILITY elements no matter where they are in the document
 $liabilities = $resp_SXE->xpath('//CREDIT_LIABILITY');
